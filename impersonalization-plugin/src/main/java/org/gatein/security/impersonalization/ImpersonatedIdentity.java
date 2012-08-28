@@ -29,7 +29,8 @@ import org.exoplatform.services.security.Identity;
  * Provides info about identity of impersonated user and encapsulates identity of "original" admin user
  *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
- */
+ * @author <a href="mailto:ocarr@redhat.com">Oliver Carr</a>
+*/
 public class ImpersonatedIdentity extends Identity
 {
    private final Identity parentIdentity;
