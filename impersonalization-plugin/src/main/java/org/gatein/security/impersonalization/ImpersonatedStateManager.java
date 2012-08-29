@@ -29,7 +29,6 @@ import org.exoplatform.container.ExoContainerContext;
 import org.exoplatform.portal.application.PortalApplication;
 import org.exoplatform.portal.application.PortalRequestContext;
 import org.exoplatform.portal.application.PortalStateManager;
-import org.exoplatform.services.security.Authenticator;
 import org.exoplatform.services.security.ConversationState;
 import org.exoplatform.services.security.ConversationRegistry;
 import org.exoplatform.services.security.Identity;
@@ -45,13 +44,12 @@ import org.gatein.common.logging.LoggerFactory;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 
-import java.util.List;
-
 
 /**
  * State manager, which is able to detect impersonalization and maintains webui state of impersonator and new (impersonated) user
  *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * @author <a href="mailto:ocarr@redhat.com">Oliver Carr</a>
  */
 public class ImpersonatedStateManager extends PortalStateManager
 {
@@ -103,10 +101,10 @@ public class ImpersonatedStateManager extends PortalStateManager
          throw new IllegalStateException("We are in state " + impersonalizationState + " but we have invalid identity " + identity);
       }
       ImpersonatedIdentity impersonatedIdentity = (ImpersonatedIdentity)identity;
-      log.info("Going to backup current WebUI state of user " + impersonatedIdentity.getParentIdentity().getUserId() 
+      log.info("Going to backup current WebUI state of user " + impersonatedIdentity.getParentConversationState().getIdentity().getUserId() 
     		  + ". Creating new state for impersonated user " + impersonatedIdentity.getUserId());
       
-      backupOldState(context, impersonatedIdentity.getParentIdentity().getUserId());  // Now we need to backup old state and clear it
+      backupOldState(context);  // Now we need to backup old state and clear it
    }
 
    protected void restoreParentState(WebuiRequestContext context, ConversationState convState, ImpersonalizationState impersonalizationState)
@@ -119,41 +117,36 @@ public class ImpersonatedStateManager extends PortalStateManager
       httpSession.setAttribute(getKey(context), previousStateObj);
       httpSession.removeAttribute(keyBackup);
 
-      final String keyUserIdBackup = getKeyForUserIdBackup(context);
-      String previousUserId = (String) httpSession.getAttribute(keyUserIdBackup);
-      httpSession.removeAttribute(keyUserIdBackup);
+      Identity currentIdentity = ConversationState.getCurrent().getIdentity();
+      ImpersonatedIdentity impersonatedIdentity = null;
+      if (currentIdentity instanceof ImpersonatedIdentity) 
+      {
+    	  impersonatedIdentity = (ImpersonatedIdentity) currentIdentity;
+      } else 
+      {
+          throw new IllegalStateException("We are in state " + impersonalizationState + " but we have invalid identity " + currentIdentity);
+      }
 
+      log.info("Restoring WebUI state of user " + impersonatedIdentity.getParentConversationState().getIdentity().getUserId() 
+    		  + ". Ending impersonation for user " + impersonatedIdentity.getUserId());
+      
       ExoContainer container = ExoContainerContext.getContainerByName(PortalContainer.DEFAULT_PORTAL_CONTAINER_NAME);
       if (container == null) 
       {
          log.warn("Container " + PortalContainer.DEFAULT_PORTAL_CONTAINER_NAME + " not found.");
          container = ExoContainerContext.getTopContainer();
       }
-      
+    
       ConversationRegistry conversationRegistry =
-            (ConversationRegistry)container.getComponentInstanceOfType(ConversationRegistry.class);
-      
-      List<ConversationState> conversationStates = 
-    		  conversationRegistry.unregisterByUserId(convState.getIdentity().getUserId());
-      
-      Authenticator authenticator = (Authenticator) container.getComponentInstanceOfType(Authenticator.class);
-      Identity prevIdentity = null;
-      try 
-      {
-         prevIdentity = authenticator.createIdentity(previousUserId);
-      } catch (Exception e) 
-      {
-         log.error("New identity for user: " + previousUserId + " not created.\n" + e);
-         return;
-      }
-      // Update conversationRegistry with new previous Identity
-      ConversationState newPrevConversationState = new ConversationState(prevIdentity);
-      StateKey stateKey = new HttpSessionStateKey(httpSession);
-      conversationRegistry.register(stateKey, newPrevConversationState);
-      
-      ConversationState.setCurrent(newPrevConversationState);
+           (ConversationRegistry)container.getComponentInstanceOfType(ConversationRegistry.class);
 
-      // Add flag to ConversationState that webui state needs to be updated
+      ConversationState newPrevConversationState = 
+    		  new ConversationState(impersonatedIdentity.getParentConversationState().getIdentity());
+      StateKey stateKey = new HttpSessionStateKey(httpSession);
+      conversationRegistry.register(stateKey, impersonatedIdentity.getParentConversationState());
+      
+      ConversationState.setCurrent(impersonatedIdentity.getParentConversationState());
+
       httpSession.setAttribute(ImpersonatedStateManager.ATTR_IMPERSONALIZATION_STATE, null);
    }
 
@@ -176,11 +169,6 @@ public class ImpersonatedStateManager extends PortalStateManager
       return getKey(webuiRC) + ".backup";
    }
 
-   protected String getKeyForUserIdBackup(WebuiRequestContext webuiRC)
-   {
-      return getKey(webuiRC) + ".userid";
-   }
-
    // TODO: Change parent method to be protected to avoid this duplication
    protected HttpSession getSession(WebuiRequestContext webuiRC)
    {
@@ -198,13 +186,11 @@ public class ImpersonatedStateManager extends PortalStateManager
       return req.getSession(false);
    }
 
-   private void backupOldState(WebuiRequestContext context, String userId)
+   private void backupOldState(WebuiRequestContext context)
    {
       final String keyBackup = getKeyForStateBackup(context);
 
       HttpSession session = getSession(context);
-      final String keyBackupUserId = getKeyForUserIdBackup(context);
-      session.setAttribute(keyBackupUserId, userId);
 
       // Now we need to backup old state and clear it
       final String key = getKey(context);

@@ -23,6 +23,7 @@
 
 package org.gatein.security.impersonalization;
 
+import org.exoplatform.services.security.ConversationState;
 import org.exoplatform.services.security.Identity;
 
 /**
@@ -33,16 +34,17 @@ import org.exoplatform.services.security.Identity;
 */
 public class ImpersonatedIdentity extends Identity
 {
-   private final Identity parentIdentity;
-
-   public ImpersonatedIdentity(Identity impersonatedIdentity, Identity parentIdentity)
+   private final ConversationState parentConversationState;
+   
+   public ImpersonatedIdentity(Identity impersonatedIdentity, ConversationState parentConversationState)
    {
       super(impersonatedIdentity.getUserId(), impersonatedIdentity.getMemberships(), impersonatedIdentity.getRoles());
-      this.parentIdentity = parentIdentity;
+      this.parentConversationState = parentConversationState;
    }
-
-   public Identity getParentIdentity()
+   
+   public ConversationState getParentConversationState() 
    {
-      return parentIdentity;
+	   return parentConversationState;
    }
+   
 }
