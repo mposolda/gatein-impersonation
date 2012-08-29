@@ -10,7 +10,11 @@
 
   <artifactId>impersonate-portlet</artifactId>
   <packaging>war</packaging>
-  <name>impersonate-portlet Maven Webapp</name>
+  <name>User Impersonate Login Portlet</name>
+
+  <build>
+    <finalName>impersonate-portlet</finalName>
+  </build>
 
   <dependencies>
      <dependency>
@@ -29,7 +33,4 @@
         <scope>provided</scope>
      </dependency>
   </dependencies>
-  <build>
-    <finalName>impersonate-portlet</finalName>
-  </build>
 </project>

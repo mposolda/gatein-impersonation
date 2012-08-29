@@ -23,25 +23,28 @@
 
 package org.gatein.security.impersonalization;
 
+import org.exoplatform.services.security.ConversationState;
 import org.exoplatform.services.security.Identity;
 
 /**
  * Provides info about identity of impersonated user and encapsulates identity of "original" admin user
  *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
- */
+ * @author <a href="mailto:ocarr@redhat.com">Oliver Carr</a>
+*/
 public class ImpersonatedIdentity extends Identity
 {
-   private final Identity parentIdentity;
-
-   public ImpersonatedIdentity(Identity impersonatedIdentity, Identity parentIdentity)
+   private final ConversationState parentConversationState;
+   
+   public ImpersonatedIdentity(Identity impersonatedIdentity, ConversationState parentConversationState)
    {
       super(impersonatedIdentity.getUserId(), impersonatedIdentity.getMemberships(), impersonatedIdentity.getRoles());
-      this.parentIdentity = parentIdentity;
+      this.parentConversationState = parentConversationState;
    }
-
-   public Identity getParentIdentity()
+   
+   public ConversationState getParentConversationState() 
    {
-      return parentIdentity;
+	   return parentConversationState;
    }
+   
 }

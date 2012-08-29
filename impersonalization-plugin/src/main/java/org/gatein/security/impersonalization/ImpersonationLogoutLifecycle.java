@@ -26,6 +26,7 @@ package org.gatein.security.impersonalization;
 import org.exoplatform.portal.application.PortalLogoutLifecycle;
 import org.exoplatform.portal.application.PortalRequestContext;
 import org.exoplatform.web.application.Application;
+import org.exoplatform.web.login.LogoutControl;
 import org.exoplatform.webui.application.WebuiRequestContext;
 import org.gatein.common.logging.Logger;
 import org.gatein.common.logging.LoggerFactory;
@@ -33,19 +34,21 @@ import org.gatein.common.logging.LoggerFactory;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 
+
 /**
  * Updated version of {@link PortalLogoutLifecycle} which performs some tasks during impersonalization
  *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * @author <a href="mailto:ocarr@redhat.com">Oliver Carr</a>
  */
 public class ImpersonationLogoutLifecycle extends PortalLogoutLifecycle
 {
-   private static final Logger log = LoggerFactory.getLogger(ImpersonatedStateManager.class);
+   private static final Logger log = LoggerFactory.getLogger(ImpersonationLogoutLifecycle.class);
 
    public void onEndRequest(Application app, WebuiRequestContext context) throws Exception
    {
       HttpSession currentSession = getSession(context);
-      ImpersonalizationState impState = (ImpersonalizationState)currentSession.getAttribute(ImpersonatedStateManager.ATTR_IMPERSONALIZATION_STATE);
+      ImpersonalizationState impState = (ImpersonalizationState)currentSession.getAttribute(ImpersonatedStateManager.ATTR_IMPERSONALIZATION_STATE);      
       if (impState == ImpersonalizationState.IMPERSONALIZATION_STARTED)
       {
          log.info("Impersonalization state changed to state " + ImpersonalizationState.IMPERSONALIZATION_START_IN_PROGRESS);
@@ -56,7 +59,13 @@ public class ImpersonationLogoutLifecycle extends PortalLogoutLifecycle
          log.info("Impersonalization state changed to state " + ImpersonalizationState.IMPERSONALIZATION_IN_PROGRESS);
          currentSession.setAttribute(ImpersonatedStateManager.ATTR_IMPERSONALIZATION_STATE, ImpersonalizationState.IMPERSONALIZATION_IN_PROGRESS);
       }
-
+      else if (impState == ImpersonalizationState.IMPERSONALIZATION_IN_PROGRESS && LogoutControl.isLogoutRequired())
+      {
+         LogoutControl.cancelLogout();  // Cancel Logout will handle ourselves.
+         log.info("Impersonalization state changed to state " + ImpersonalizationState.IMPERSONALIZATION_FINISHED);
+         currentSession.setAttribute(ImpersonatedStateManager.ATTR_IMPERSONALIZATION_STATE, ImpersonalizationState.IMPERSONALIZATION_FINISHED);
+      }
+     
       super.onEndRequest(app, context);
    }
 
