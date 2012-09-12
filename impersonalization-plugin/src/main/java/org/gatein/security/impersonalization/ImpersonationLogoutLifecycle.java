@@ -28,6 +28,7 @@ import org.exoplatform.portal.application.PortalRequestContext;
 import org.exoplatform.web.application.Application;
 import org.exoplatform.web.login.LogoutControl;
 import org.exoplatform.webui.application.WebuiRequestContext;
+
 import org.gatein.common.logging.Logger;
 import org.gatein.common.logging.LoggerFactory;
 
