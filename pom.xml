@@ -37,4 +37,10 @@
       <module>impersonate-portlet</module>      
    </modules>
 
+   <scm>
+      <connection>scm:git:git:github.com:ozoli/gatein-management.git</connection>
+      <developerConnection>scm:git:git@github.com:ozoli/gatein-impersonation.git</developerConnection>
+      <url>scm:git:git@github.com:ozoli/gatein-impersonation</url>
+   </scm>
+
 </project>

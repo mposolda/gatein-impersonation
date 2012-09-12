@@ -23,11 +23,18 @@
 
 package org.gatein.security.impersonalization;
 
+import org.exoplatform.container.ExoContainer;
+import org.exoplatform.container.PortalContainer;
+import org.exoplatform.container.ExoContainerContext;
 import org.exoplatform.portal.application.PortalApplication;
 import org.exoplatform.portal.application.PortalRequestContext;
 import org.exoplatform.portal.application.PortalStateManager;
 import org.exoplatform.services.security.ConversationState;
+import org.exoplatform.services.security.ConversationRegistry;
 import org.exoplatform.services.security.Identity;
+import org.exoplatform.services.security.StateKey;
+import org.exoplatform.services.security.web.HttpSessionStateKey;
+import org.exoplatform.webui.application.WebuiApplication;
 import org.exoplatform.webui.application.WebuiRequestContext;
 import org.exoplatform.webui.application.portlet.PortletRequestContext;
 import org.exoplatform.webui.core.UIApplication;
@@ -37,10 +44,12 @@ import org.gatein.common.logging.LoggerFactory;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 
+
 /**
  * State manager, which is able to detect impersonalization and maintains webui state of impersonator and new (impersonated) user
  *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
+ * @author <a href="mailto:ocarr@redhat.com">Oliver Carr</a>
  */
 public class ImpersonatedStateManager extends PortalStateManager
 {
@@ -51,16 +60,21 @@ public class ImpersonatedStateManager extends PortalStateManager
    @Override
    public void storeUIRootComponent(WebuiRequestContext context) throws Exception
    {
-      super.storeUIRootComponent(context);    //To change body of overridden methods use File | Settings | File Templates.
+      super.storeUIRootComponent(context);
    }
 
+   @Override
+   public void expire(String sessionId, WebuiApplication app) throws Exception
+   {
+      // For now do nothing....
+   }
+   
    @Override
    public UIApplication restoreUIRootComponent(WebuiRequestContext context) throws Exception
    {
       ConversationState convState = ConversationState.getCurrent();
       ImpersonalizationState impersonalizationState = (ImpersonalizationState)getSession(context).getAttribute(ATTR_IMPERSONALIZATION_STATE);
-      log.debug("Impersonalization state: " + impersonalizationState);
-
+      
       if (impersonalizationState == null ||
           impersonalizationState == ImpersonalizationState.IMPERSONALIZATION_STARTED ||
          impersonalizationState == ImpersonalizationState.IMPERSONALIZATION_IN_PROGRESS)
@@ -87,21 +101,53 @@ public class ImpersonatedStateManager extends PortalStateManager
          throw new IllegalStateException("We are in state " + impersonalizationState + " but we have invalid identity " + identity);
       }
       ImpersonatedIdentity impersonatedIdentity = (ImpersonatedIdentity)identity;
-
-      log.debug("Going to backup current WebUI state of user " + impersonatedIdentity.getParentIdentity().getUserId() + ". Creating new state for impersonated user " + impersonatedIdentity.getUserId());
-      HttpSession session = getSession(context);
-
-      // Now we need to backup old state and clear it
-      String key = getKey(context);
-      String keyBackup = getKeyForStateBackup(context);
-      Object currentState = session.getAttribute(key);
-      session.setAttribute(keyBackup, currentState);
-      session.removeAttribute(key);
+      log.info("Going to backup current WebUI state of user " + impersonatedIdentity.getParentConversationState().getIdentity().getUserId() 
+    		  + ". Creating new state for impersonated user " + impersonatedIdentity.getUserId());
+      
+      backupOldState(context);  // Now we need to backup old state and clear it
    }
 
    protected void restoreParentState(WebuiRequestContext context, ConversationState convState, ImpersonalizationState impersonalizationState)
    {
-      // TODO: implement
+      // Obtain stateKey of current HttpSession
+      HttpSession httpSession = getSession(context);
+
+      final String keyBackup = getKeyForStateBackup(context);
+      Object previousStateObj = httpSession.getAttribute(keyBackup);
+      httpSession.setAttribute(getKey(context), previousStateObj);
+      httpSession.removeAttribute(keyBackup);
+
+      Identity currentIdentity = ConversationState.getCurrent().getIdentity();
+      ImpersonatedIdentity impersonatedIdentity = null;
+      if (currentIdentity instanceof ImpersonatedIdentity) 
+      {
+    	  impersonatedIdentity = (ImpersonatedIdentity) currentIdentity;
+      } else 
+      {
+          throw new IllegalStateException("We are in state " + impersonalizationState + " but we have invalid identity " + currentIdentity);
+      }
+
+      log.info("Restoring WebUI state of user " + impersonatedIdentity.getParentConversationState().getIdentity().getUserId() 
+    		  + ". Ending impersonation for user " + impersonatedIdentity.getUserId());
+      
+      ExoContainer container = ExoContainerContext.getContainerByName(PortalContainer.DEFAULT_PORTAL_CONTAINER_NAME);
+      if (container == null) 
+      {
+         log.warn("Container " + PortalContainer.DEFAULT_PORTAL_CONTAINER_NAME + " not found.");
+         container = ExoContainerContext.getTopContainer();
+      }
+    
+      ConversationRegistry conversationRegistry =
+           (ConversationRegistry)container.getComponentInstanceOfType(ConversationRegistry.class);
+
+      ConversationState newPrevConversationState = 
+    		  new ConversationState(impersonatedIdentity.getParentConversationState().getIdentity());
+      StateKey stateKey = new HttpSessionStateKey(httpSession);
+      conversationRegistry.register(stateKey, impersonatedIdentity.getParentConversationState());
+      
+      ConversationState.setCurrent(impersonatedIdentity.getParentConversationState());
+
+      httpSession.setAttribute(ImpersonatedStateManager.ATTR_IMPERSONALIZATION_STATE, null);
    }
 
    // TODO: Change parent method to be protected to avoid this duplication
@@ -139,4 +185,18 @@ public class ImpersonatedStateManager extends PortalStateManager
       HttpServletRequest req = portalRC.getRequest();
       return req.getSession(false);
    }
+
+   private void backupOldState(WebuiRequestContext context)
+   {
+      final String keyBackup = getKeyForStateBackup(context);
+
+      HttpSession session = getSession(context);
+
+      // Now we need to backup old state and clear it
+      final String key = getKey(context);
+      Object currentState = session.getAttribute(key);
+      session.setAttribute(keyBackup, currentState);
+      session.removeAttribute(key);
+   }
+
 }

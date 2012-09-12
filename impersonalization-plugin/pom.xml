@@ -10,7 +10,11 @@
 
   <artifactId>impersonalization-plugin</artifactId>
   <packaging>jar</packaging>
-  <name>impersonalization-plugin</name>
+  <name>User Impersonalization Plugin</name>
+
+  <build>
+    <finalName>impersonalization-plugin</finalName>
+  </build>
 
   <dependencies>
      <dependency>
@@ -22,7 +26,4 @@
         <artifactId>exo.portal.webui.portal</artifactId>
      </dependency>
   </dependencies>
-  <build>
-    <finalName>impersonalization-plugin</finalName>
-  </build>
 </project>
