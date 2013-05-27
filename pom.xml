@@ -23,6 +23,11 @@
             <artifactId>exo.portal.webui.portal</artifactId>
             <version>3.5.4.Final</version>
          </dependency>
+         <dependency>
+            <groupId>org.gatein.api</groupId>
+            <artifactId>gatein-api</artifactId>
+            <version>1.0.0.CR3</version>
+         </dependency>
 
          <dependency>
             <groupId>org.gatein.impersonation</groupId>

@@ -10,7 +10,7 @@
 	<form action="<%= impersonateLoginActionURL %>" method="POST">
          <span class="portlet-form-field-label">User name:</span>
          <input class="portlet-form-input-field" type="text" name="username"/>
-		 <input type="submit" name="action" value="Impersontate User"/>
+		 <input type="submit" value="Impersonate User"/>
 	</form>
 
 </div>

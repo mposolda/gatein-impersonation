@@ -29,15 +29,15 @@ import javax.portlet.ActionRequest;
 import javax.portlet.ActionResponse;
 import javax.portlet.GenericPortlet;
 import javax.portlet.PortletException;
-import javax.portlet.PortletMode;
-import javax.portlet.PortletPreferences;
 import javax.portlet.PortletRequestDispatcher;
 import javax.portlet.RenderRequest;
 import javax.portlet.RenderResponse;
-import javax.portlet.UnavailableException;
 
-import org.exoplatform.services.log.ExoLogger;
-import org.exoplatform.services.log.Log;
+import org.gatein.api.PortalRequest;
+import org.gatein.api.site.SiteId;
+import org.gatein.common.logging.Logger;
+import org.gatein.common.logging.LoggerFactory;
+import org.gatein.security.impersonation.ImpersonationServlet;
 
 /**
  * User Impersonation Login Portlet
@@ -52,20 +52,11 @@ import org.exoplatform.services.log.Log;
 public class UserImpersonationLoginPortlet extends GenericPortlet 
 {
    /** Logger. */
-   private static final Log log = ExoLogger.getLogger(UserImpersonationLoginPortlet.class);
+   private static final Logger log = LoggerFactory.getLogger(UserImpersonationLoginPortlet.class);
 
-   /** User Impersonation Workflow. */
-   private UserImpersonationController userImpersonationController = new UserImpersonationController();
-   
-   /**
-    * {@inheritDoc}
-    */
-   public void doEdit(RenderRequest request, RenderResponse response) throws IOException, PortletException 
-   {
-      response.setContentType("text/html");
-      response.setTitle("Edit");
-      response.getWriter().print(userImpersonationController.getEditViewHTML(request, response));
-   }
+   private static final String IMPERSONATE_URL_SUFIX = "/impersonate";
+
+   private static final String ERROR_MESSAGE = "errorMessage";
    
    /**
     * {@inheritDoc}
@@ -84,26 +75,35 @@ public class UserImpersonationLoginPortlet extends GenericPortlet
     * {@inheritDoc}
     */
    public void processAction(ActionRequest request, ActionResponse response)
-         throws PortletException, IOException, UnavailableException 
+         throws PortletException, IOException
    {
-      PortletPreferences prefs = request.getPreferences();
-      final String action = request.getParameter("action");
-      if (action.startsWith("Impersontate") && !userImpersonationController.impersonateUserLogin(request))
+      // Username to impersonate
+      String usernameToImpersonate = request.getParameter("username");
+      if (usernameToImpersonate == null || usernameToImpersonate.length() == 0)
       {
-         response.setPortletMode(PortletMode.VIEW);
+         log.error("Username must be filled!");
          return;
-      } else if (action.startsWith("Cancel")) {
-         response.setPortletMode(PortletMode.VIEW);
-         return;
-      } else if (action.startsWith("Update")) {
-         final String impersonateRole = request.getParameter("impersonateRole");
-         prefs.setValue("impersonateRole", impersonateRole);
-         log.info("Updated Impersonate Role: " + impersonateRole);
-         final String impersonateRedirectUrl = request.getParameter("impersonateRedirectUrl");         
-         prefs.setValue("impersonateRedirectUrl", impersonateRedirectUrl);
-         log.info("Updated Impersonate Redirect URL: " + impersonateRedirectUrl);
-         prefs.store();
       }
+
+      // We just need context like '/portal'
+      String uriPrefix = PortalRequest.getInstance().getURIResolver().resolveURI(new SiteId("k"));
+      String portalContext = uriPrefix.substring(0, uriPrefix.length() - 2);
+      String redirectURI = portalContext + IMPERSONATE_URL_SUFIX;
+
+      // Attach params
+      redirectURI = new StringBuilder(redirectURI)
+            .append("?")
+            .append(ImpersonationServlet.PARAM_ACTION)
+            .append("=")
+            .append(ImpersonationServlet.PARAM_ACTION_START_IMPERSONATION)
+            .append("&")
+            .append(ImpersonationServlet.PARAM_USERNAME)
+            .append("=")
+            .append(usernameToImpersonate)
+            .toString();
+
+      // Redirect to impersonation servlet
+      response.sendRedirect(redirectURI);
    }
    
 }

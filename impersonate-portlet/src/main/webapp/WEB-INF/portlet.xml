@@ -34,10 +34,9 @@ version="2.0"
       <supports>
          <mime-type>text/html</mime-type>
          <portlet-mode>view</portlet-mode>
-         <portlet-mode>edit</portlet-mode>
       </supports>
       <portlet-info>
-         <title>User Impersonalization Portlet</title>
+         <title>User Impersonation Portlet</title>
       </portlet-info>
    </portlet>
    
