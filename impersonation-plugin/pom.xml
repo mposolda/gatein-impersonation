@@ -3,17 +3,17 @@
   <modelVersion>4.0.0</modelVersion>
 
    <parent>
-      <groupId>org.gatein.impersonalization</groupId>
+      <groupId>org.gatein.impersonation</groupId>
       <artifactId>parent</artifactId>
       <version>1.0-SNAPSHOT</version>
    </parent>
 
-  <artifactId>impersonalization-plugin</artifactId>
+  <artifactId>impersonation-plugin</artifactId>
   <packaging>jar</packaging>
-  <name>User Impersonalization Plugin</name>
+  <name>User Impersonation Plugin</name>
 
   <build>
-    <finalName>impersonalization-plugin</finalName>
+    <finalName>impersonation-plugin</finalName>
   </build>
 
   <dependencies>

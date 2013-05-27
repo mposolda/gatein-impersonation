@@ -21,17 +21,17 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.gatein.security.impersonalization;
+package org.gatein.security.impersonation;
 
 /**
- * State of impersonalization workflow
+ * State of impersonation workflow
  *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
  */
-public enum ImpersonalizationState
+public enum ImpersonationState
 {
-   IMPERSONALIZATION_STARTED,
-   IMPERSONALIZATION_START_IN_PROGRESS,
-   IMPERSONALIZATION_IN_PROGRESS,
-   IMPERSONALIZATION_FINISHED
+   IMPERSONATION_STARTED,
+   IMPERSONATION_START_IN_PROGRESS,
+   IMPERSONATION_IN_PROGRESS,
+   IMPERSONATION_FINISHED
 }

@@ -5,9 +5,9 @@
 
    <modelVersion>4.0.0</modelVersion>
 
-   <groupId>org.gatein.impersonalization</groupId>
+   <groupId>org.gatein.impersonation</groupId>
    <artifactId>parent</artifactId>
-   <name>impersonalization parent</name>
+   <name>impersonation parent</name>
    <version>1.0-SNAPSHOT</version>
    <packaging>pom</packaging>
 
@@ -25,15 +25,15 @@
          </dependency>
 
          <dependency>
-            <groupId>org.gatein.impersonalization</groupId>
-            <artifactId>impersonalization-plugin</artifactId>
+            <groupId>org.gatein.impersonation</groupId>
+            <artifactId>impersonation-plugin</artifactId>
             <version>1.0-SNAPSHOT</version>
          </dependency>
       </dependencies>
    </dependencyManagement>
 
    <modules>
-      <module>impersonalization-plugin</module>
+      <module>impersonation-plugin</module>
       <module>impersonate-portlet</module>      
    </modules>
 

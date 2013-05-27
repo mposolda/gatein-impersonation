@@ -21,7 +21,7 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.gatein.security.impersonalization;
+package org.gatein.security.impersonation;
 
 import org.exoplatform.container.ExoContainer;
 import org.exoplatform.container.PortalContainer;
@@ -46,14 +46,14 @@ import javax.servlet.http.HttpSession;
 
 
 /**
- * State manager, which is able to detect impersonalization and maintains webui state of impersonator and new (impersonated) user
+ * State manager, which is able to detect impersonation and maintains webui state of impersonator and new (impersonated) user
  *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
  * @author <a href="mailto:ocarr@redhat.com">Oliver Carr</a>
  */
 public class ImpersonatedStateManager extends PortalStateManager
 {
-   public static final String ATTR_IMPERSONALIZATION_STATE = "ATTR_IMPERSONALIZATION_STATE";
+   public static final String ATTR_IMPERSONATION_STATE = "ATTR_IMPERSONATION_STATE";
 
    private static final Logger log = LoggerFactory.getLogger(ImpersonatedStateManager.class);
 
@@ -64,7 +64,7 @@ public class ImpersonatedStateManager extends PortalStateManager
    }
 
    @Override
-   public void expire(String sessionId, WebuiApplication app) throws Exception
+   public void expire(String sessionId, WebuiApplication app)
    {
       // For now do nothing....
    }
@@ -73,32 +73,32 @@ public class ImpersonatedStateManager extends PortalStateManager
    public UIApplication restoreUIRootComponent(WebuiRequestContext context) throws Exception
    {
       ConversationState convState = ConversationState.getCurrent();
-      ImpersonalizationState impersonalizationState = (ImpersonalizationState)getSession(context).getAttribute(ATTR_IMPERSONALIZATION_STATE);
+      ImpersonationState impersonationState = (ImpersonationState)getSession(context).getAttribute(ATTR_IMPERSONATION_STATE);
       
-      if (impersonalizationState == null ||
-          impersonalizationState == ImpersonalizationState.IMPERSONALIZATION_STARTED ||
-         impersonalizationState == ImpersonalizationState.IMPERSONALIZATION_IN_PROGRESS)
+      if (impersonationState == null ||
+          impersonationState == ImpersonationState.IMPERSONATION_STARTED ||
+         impersonationState == ImpersonationState.IMPERSONATION_IN_PROGRESS)
       {
          return super.restoreUIRootComponent(context);
       }
-      else if (impersonalizationState == ImpersonalizationState.IMPERSONALIZATION_START_IN_PROGRESS)
+      else if (impersonationState == ImpersonationState.IMPERSONATION_START_IN_PROGRESS)
       {
-         backupParentStateAndClearIt(context, convState, impersonalizationState);
+         backupParentStateAndClearIt(context, convState, impersonationState);
       }
-      else if (impersonalizationState == ImpersonalizationState.IMPERSONALIZATION_FINISHED)
+      else if (impersonationState == ImpersonationState.IMPERSONATION_FINISHED)
       {
-         restoreParentState(context, convState, impersonalizationState);
+         restoreParentState(context, convState, impersonationState);
       }
 
       return super.restoreUIRootComponent(context);
    }
 
-   protected void backupParentStateAndClearIt(WebuiRequestContext context, ConversationState convState, ImpersonalizationState impersonalizationState)
+   protected void backupParentStateAndClearIt(WebuiRequestContext context, ConversationState convState, ImpersonationState impersonationState)
    {
       Identity identity = convState.getIdentity();
       if (!(identity instanceof ImpersonatedIdentity))
       {
-         throw new IllegalStateException("We are in state " + impersonalizationState + " but we have invalid identity " + identity);
+         throw new IllegalStateException("We are in state " + impersonationState + " but we have invalid identity " + identity);
       }
       ImpersonatedIdentity impersonatedIdentity = (ImpersonatedIdentity)identity;
       log.info("Going to backup current WebUI state of user " + impersonatedIdentity.getParentConversationState().getIdentity().getUserId() 
@@ -107,7 +107,7 @@ public class ImpersonatedStateManager extends PortalStateManager
       backupOldState(context);  // Now we need to backup old state and clear it
    }
 
-   protected void restoreParentState(WebuiRequestContext context, ConversationState convState, ImpersonalizationState impersonalizationState)
+   protected void restoreParentState(WebuiRequestContext context, ConversationState convState, ImpersonationState impersonationState)
    {
       // Obtain stateKey of current HttpSession
       HttpSession httpSession = getSession(context);
@@ -124,7 +124,7 @@ public class ImpersonatedStateManager extends PortalStateManager
     	  impersonatedIdentity = (ImpersonatedIdentity) currentIdentity;
       } else 
       {
-          throw new IllegalStateException("We are in state " + impersonalizationState + " but we have invalid identity " + currentIdentity);
+          throw new IllegalStateException("We are in state " + impersonationState + " but we have invalid identity " + currentIdentity);
       }
 
       log.info("Restoring WebUI state of user " + impersonatedIdentity.getParentConversationState().getIdentity().getUserId() 
@@ -140,14 +140,12 @@ public class ImpersonatedStateManager extends PortalStateManager
       ConversationRegistry conversationRegistry =
            (ConversationRegistry)container.getComponentInstanceOfType(ConversationRegistry.class);
 
-      ConversationState newPrevConversationState = 
-    		  new ConversationState(impersonatedIdentity.getParentConversationState().getIdentity());
       StateKey stateKey = new HttpSessionStateKey(httpSession);
       conversationRegistry.register(stateKey, impersonatedIdentity.getParentConversationState());
       
       ConversationState.setCurrent(impersonatedIdentity.getParentConversationState());
 
-      httpSession.setAttribute(ImpersonatedStateManager.ATTR_IMPERSONALIZATION_STATE, null);
+      httpSession.setAttribute(ImpersonatedStateManager.ATTR_IMPERSONATION_STATE, null);
    }
 
    // TODO: Change parent method to be protected to avoid this duplication

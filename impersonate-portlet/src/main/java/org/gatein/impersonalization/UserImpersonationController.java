@@ -29,7 +29,6 @@ import javax.portlet.ActionRequest;
 import javax.portlet.PortletPreferences;
 import javax.portlet.RenderRequest;
 import javax.portlet.RenderResponse;
-import javax.portlet.UnavailableException;
 import javax.servlet.http.HttpSession;
 
 import org.exoplatform.container.ExoContainer;
@@ -46,9 +45,9 @@ import org.exoplatform.services.security.Identity;
 import org.exoplatform.services.security.StateKey;
 import org.exoplatform.services.security.web.HttpSessionStateKey;
 
-import org.gatein.security.impersonalization.ImpersonalizationState;
-import org.gatein.security.impersonalization.ImpersonatedIdentity;
-import org.gatein.security.impersonalization.ImpersonatedStateManager;
+import org.gatein.security.impersonation.ImpersonationState;
+import org.gatein.security.impersonation.ImpersonatedIdentity;
+import org.gatein.security.impersonation.ImpersonatedStateManager;
 
 
 /**
@@ -130,7 +129,7 @@ public class UserImpersonationController
        conversationRegistry.register(stateKey, impersonatedConversationState);
 
        // Add flag to ConversationState that webui state needs to be updated
-       httpSession.setAttribute(ImpersonatedStateManager.ATTR_IMPERSONALIZATION_STATE, ImpersonalizationState.IMPERSONALIZATION_STARTED);
+       httpSession.setAttribute(ImpersonatedStateManager.ATTR_IMPERSONATION_STATE, ImpersonationState.IMPERSONATION_STARTED);
 
        prContext.getResponse().sendRedirect(request.getPreferences().getValue("impersonateRedirectUrl", DEFAULT_IMPERSONATE_REDIRECT_URL));       
        return true;

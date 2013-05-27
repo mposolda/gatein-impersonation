@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-      <groupId>org.gatein.impersonalization</groupId>
+      <groupId>org.gatein.impersonation</groupId>
       <artifactId>parent</artifactId>
       <version>1.0-SNAPSHOT</version>
   </parent>
@@ -28,8 +28,8 @@
         <scope>provided</scope>
      </dependency>
      <dependency>
-        <groupId>org.gatein.impersonalization</groupId>
-        <artifactId>impersonalization-plugin</artifactId>
+        <groupId>org.gatein.impersonation</groupId>
+        <artifactId>impersonation-plugin</artifactId>
         <scope>provided</scope>
      </dependency>
   </dependencies>
