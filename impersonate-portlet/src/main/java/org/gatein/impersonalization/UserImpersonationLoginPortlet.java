@@ -24,6 +24,7 @@
 package org.gatein.impersonalization;
 
 import java.io.IOException;
+import java.net.URLEncoder;
 
 import javax.portlet.ActionRequest;
 import javax.portlet.ActionResponse;
@@ -34,6 +35,7 @@ import javax.portlet.RenderRequest;
 import javax.portlet.RenderResponse;
 
 import org.gatein.api.PortalRequest;
+import org.gatein.api.navigation.NodePath;
 import org.gatein.api.site.SiteId;
 import org.gatein.common.logging.Logger;
 import org.gatein.common.logging.LoggerFactory;
@@ -83,8 +85,15 @@ public class UserImpersonationLoginPortlet extends GenericPortlet
          return;
       }
 
+      PortalRequest portalRequest = PortalRequest.getInstance();
+
+      // Obtain current URL. We will need to send it to ImpersonationServlet
+      SiteId siteId = portalRequest.getSiteId();
+      NodePath nodePath = portalRequest.getNodePath();
+      String currentURI = portalRequest.getURIResolver().resolveURI(siteId) + nodePath.toString();
+
       // We just need context like '/portal'
-      String uriPrefix = PortalRequest.getInstance().getURIResolver().resolveURI(new SiteId("k"));
+      String uriPrefix = portalRequest.getURIResolver().resolveURI(new SiteId("k"));
       String portalContext = uriPrefix.substring(0, uriPrefix.length() - 2);
       String redirectURI = portalContext + ImpersonationServlet.IMPERSONATE_URL_SUFIX;
 
@@ -97,7 +106,11 @@ public class UserImpersonationLoginPortlet extends GenericPortlet
             .append("&")
             .append(ImpersonationServlet.PARAM_USERNAME)
             .append("=")
-            .append(usernameToImpersonate)
+            .append(URLEncoder.encode(usernameToImpersonate, "UTF-8"))
+            .append("&")
+            .append(ImpersonationServlet.PARAM_RETURN_IMPERSONATION_URI)
+            .append("=")
+            .append(URLEncoder.encode(currentURI, "UTF-8"))
             .toString();
 
       // Redirect to impersonation servlet

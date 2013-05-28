@@ -28,14 +28,27 @@ import java.util.Enumeration;
  */
 public class ImpersonationServlet extends AbstractHttpServlet
 {
+   /** Request parameter to track if we want to start new impersonation session or stop existing impersonation session */
    public static final String PARAM_ACTION = "_impersonationAction";
    public static final String PARAM_ACTION_START_IMPERSONATION = "startImpersonation";
    public static final String PARAM_ACTION_STOP_IMPERSONATION = "stopImpersonation";
 
+   /** Request parameter with name of user, who will be impersonated */
    public static final String PARAM_USERNAME = "_impersonationUsername";
 
+   /**
+    * Request parameter where is stored URI, which will be used after impersonation session will be finished
+    * The point is that admin user will be redirected to same page (navigation node) from which original impersonation session was started
+    * */
+   public static final String PARAM_RETURN_IMPERSONATION_URI = "_returnImpersonationURI";
+
+   /** Session attribute where return impersonation URI will be saved */
+   public static final String ATTR_RETURN_IMPERSONATION_URI = "_returnImpersonationURI";
+
+   /** Impersonation suffix (Actually path of this servlet) */
    public static final String IMPERSONATE_URL_SUFIX = "/impersonate";
 
+   /** Prefix of session attributes, which will be used to backup existing session of root user */
    private static final String BACKUP_ATTR_PREFIX = "_bck.";
 
    private static final Logger log = LoggerFactory.getLogger(ImpersonationServlet.class);
@@ -115,6 +128,18 @@ public class ImpersonationServlet extends AbstractHttpServlet
 
       // Backup and clear current HTTP session
       backupAndClearCurrentSession(req);
+
+      // Obtain URI where we need to redirect after finish impersonation session. Save it to current HTTP session
+      String returnImpersonationURI = req.getParameter(PARAM_RETURN_IMPERSONATION_URI);
+      if (returnImpersonationURI == null)
+      {
+         returnImpersonationURI = req.getContextPath();
+      }
+      req.getSession().setAttribute(ATTR_RETURN_IMPERSONATION_URI, returnImpersonationURI);
+      if (log.isTraceEnabled())
+      {
+         log.trace("Saved URI " + returnImpersonationURI + " which will be used after finish of impersonation");
+      }
 
       // Real impersonation done here
       boolean success = impersonate(req, currentConversationState, usernameToImpersonate);
@@ -232,11 +257,17 @@ public class ImpersonationServlet extends AbstractHttpServlet
       // Restore old conversation state
       restoreConversationState(req, impersonatedIdentity);
 
+      // Restore return URI from session
+      String returnURI = getReturnURI(req);
+
       // Restore session attributes of root user
       restoreOldSessionAttributes(req);
 
-      // TODO: Fix this
-      resp.sendRedirect(req.getContextPath());
+      if (log.isTraceEnabled())
+      {
+         log.trace("Impersonation finished. Redirecting to " + returnURI);
+      }
+      resp.sendRedirect(returnURI);
    }
 
    protected void restoreConversationState(HttpServletRequest req, ImpersonatedIdentity impersonatedIdentity)
@@ -321,5 +352,22 @@ public class ImpersonationServlet extends AbstractHttpServlet
          log.error("New identity for user: " + username + " not created.", e);
          return null;
       }
+   }
+
+   private String getReturnURI(HttpServletRequest req)
+   {
+      String returnURI = null;
+      HttpSession session = req.getSession(false);
+      if (session != null)
+      {
+         returnURI = (String)session.getAttribute(ATTR_RETURN_IMPERSONATION_URI);
+      }
+
+      if (returnURI == null)
+      {
+         returnURI = req.getContextPath();
+      }
+
+      return returnURI;
    }
 }
