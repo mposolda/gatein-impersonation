@@ -35,9 +35,6 @@ import org.exoplatform.webui.application.WebuiRequestContext;
 import org.gatein.common.logging.Logger;
 import org.gatein.common.logging.LoggerFactory;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpSession;
-
 
 /**
  * Updated version of {@link PortalLogoutLifecycle} which performs some tasks during impersonation

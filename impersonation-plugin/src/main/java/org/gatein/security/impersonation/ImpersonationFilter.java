@@ -26,7 +26,7 @@ import java.util.Collection;
  */
 public class ImpersonationFilter extends AbstractFilter
 {
-   private static final Logger log = LoggerFactory.getLogger(ImpersonationServlet.class);
+   private static final Logger log = LoggerFactory.getLogger(ImpersonationFilter.class);
 
    @Override
    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException

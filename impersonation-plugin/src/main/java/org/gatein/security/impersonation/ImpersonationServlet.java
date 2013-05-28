@@ -1,9 +1,7 @@
 package org.gatein.security.impersonation;
 
 import org.exoplatform.container.web.AbstractHttpServlet;
-import org.exoplatform.portal.application.PortalRequestContext;
 import org.exoplatform.portal.config.UserACL;
-import org.exoplatform.portal.webui.util.Util;
 import org.exoplatform.services.organization.OrganizationService;
 import org.exoplatform.services.organization.User;
 import org.exoplatform.services.security.Authenticator;
@@ -229,7 +227,7 @@ public class ImpersonationServlet extends AbstractHttpServlet
       ImpersonatedIdentity impersonatedIdentity = (ImpersonatedIdentity)currentIdentity;
 
       log.debug("Cancel impersonation session. Impersonated user was: " + impersonatedIdentity.getUserId()
-            + ", Admin user was: " + impersonatedIdentity.getParentConversationState().getIdentity().getUserId());
+            + ", Admin user is: " + impersonatedIdentity.getParentConversationState().getIdentity().getUserId());
 
       // Restore old conversation state
       restoreConversationState(req, impersonatedIdentity);
