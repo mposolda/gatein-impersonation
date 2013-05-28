@@ -1,18 +1,26 @@
 package org.gatein.security.impersonation;
 
 import org.exoplatform.container.web.AbstractHttpServlet;
+import org.exoplatform.portal.application.PortalRequestContext;
 import org.exoplatform.portal.config.UserACL;
+import org.exoplatform.portal.webui.util.Util;
 import org.exoplatform.services.organization.OrganizationService;
 import org.exoplatform.services.organization.User;
+import org.exoplatform.services.security.Authenticator;
+import org.exoplatform.services.security.ConversationRegistry;
 import org.exoplatform.services.security.ConversationState;
 import org.exoplatform.services.security.Identity;
+import org.exoplatform.services.security.StateKey;
+import org.exoplatform.services.security.web.HttpSessionStateKey;
 import org.gatein.common.logging.Logger;
 import org.gatein.common.logging.LoggerFactory;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 import java.io.IOException;
+import java.util.Enumeration;
 
 /**
  * Servlet, which handles impersonation and impersonalization (de-impersonation) of users
@@ -26,6 +34,8 @@ public class ImpersonationServlet extends AbstractHttpServlet
    public static final String PARAM_ACTION_STOP_IMPERSONATION = "stopImpersonation";
 
    public static final String PARAM_USERNAME = "_impersonationUsername";
+
+   private static final String BACKUP_ATTR_PREFIX = "_bck.";
 
    private static final Logger log = LoggerFactory.getLogger(ImpersonationServlet.class);
 
@@ -97,15 +107,24 @@ public class ImpersonationServlet extends AbstractHttpServlet
       if (!checkPermission(currentIdentity, userToImpersonate))
       {
          log.error("Current user represented by identity " + currentIdentity.getUserId() + " doesn't have permission to impersonate as " + userToImpersonate);
-         resp.sendError(HttpServletResponse.SC_BAD_REQUEST);
+         resp.sendError(HttpServletResponse.SC_FORBIDDEN);
          return;
       }
 
       // Backup and clear current HTTP session
       backupAndClearCurrentSession(req);
 
-      // Impersonate
-      // TODO:
+      // Real impersonation done here
+      boolean success = impersonate(req, currentConversationState, usernameToImpersonate);
+      if (success)
+      {
+         // Redirect to portal for now
+         resp.sendRedirect(req.getContextPath());
+      }
+      else
+      {
+         resp.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
+      }
    }
 
    protected void stopImpersonation(HttpServletRequest req, HttpServletResponse resp)
@@ -128,8 +147,69 @@ public class ImpersonationServlet extends AbstractHttpServlet
       return userACL.hasPermission(currentIdentity, "manager:/platform/administrators");
    }
 
+   /**
+    * Backup all session attributes of admin user as we will have new session for "impersonated" user
+    *
+    * @param req http servlet request
+    */
    protected void backupAndClearCurrentSession(HttpServletRequest req)
    {
-      // TODO:
+      HttpSession session = req.getSession(false);
+      if (session != null)
+      {
+         Enumeration attrNames = session.getAttributeNames();
+         while (attrNames.hasMoreElements())
+         {
+            String attrName = (String)attrNames.nextElement();
+            Object attrValue = session.getAttribute(attrName);
+
+            // Backup attribute and clear old
+            String backupAttrName =  BACKUP_ATTR_PREFIX + attrName;
+            session.setAttribute(backupAttrName, attrValue);
+            session.removeAttribute(attrName);
+
+            if (log.isTraceEnabled())
+            {
+               log.trace("Finished backup of attribute: " + attrName);
+            }
+         }
+      }
+
+      // TODO: save URL to redirect after impersonation will be finished
+   }
+
+   protected boolean impersonate(HttpServletRequest req, ConversationState currentConvState, String usernameToImpersonate)
+   {
+      // Create new identity for user, who will be impersonated
+      Authenticator authenticator = (Authenticator) getContainer().getComponentInstanceOfType(Authenticator.class);
+      Identity newIdentity = null;
+      try
+      {
+         newIdentity = authenticator.createIdentity(usernameToImpersonate);
+      }
+      catch (Exception e)
+      {
+         log.error("New identity for user: " + usernameToImpersonate + " not created.\n", e);
+         return false;
+      }
+
+      ImpersonatedIdentity impersonatedIdentity = new ImpersonatedIdentity(newIdentity, currentConvState);
+
+      // Create new entry to ConversationState
+      log.debug("Set ConversationState with current session. Admin user "
+            + impersonatedIdentity.getParentConversationState().getIdentity().getUserId()
+            + " will use identity of user " + impersonatedIdentity.getUserId());
+
+      ConversationState impersonatedConversationState = new ConversationState(impersonatedIdentity);
+
+      // Obtain stateKey of current HttpSession
+      HttpSession httpSession = req.getSession();
+      StateKey stateKey = new HttpSessionStateKey(httpSession);
+
+      // Update conversationRegistry with new ImpersonatedIdentity
+      ConversationRegistry conversationRegistry = (ConversationRegistry)getContainer().getComponentInstanceOfType(ConversationRegistry.class);
+      conversationRegistry.register(stateKey, impersonatedConversationState);
+
+      return true;
    }
 }
