@@ -10,6 +10,7 @@ import org.exoplatform.services.security.Authenticator;
 import org.exoplatform.services.security.ConversationRegistry;
 import org.exoplatform.services.security.ConversationState;
 import org.exoplatform.services.security.Identity;
+import org.exoplatform.services.security.IdentityRegistry;
 import org.exoplatform.services.security.StateKey;
 import org.exoplatform.services.security.web.HttpSessionStateKey;
 import org.gatein.common.logging.Logger;
@@ -34,6 +35,8 @@ public class ImpersonationServlet extends AbstractHttpServlet
    public static final String PARAM_ACTION_STOP_IMPERSONATION = "stopImpersonation";
 
    public static final String PARAM_USERNAME = "_impersonationUsername";
+
+   public static final String IMPERSONATE_URL_SUFIX = "/impersonate";
 
    private static final String BACKUP_ATTR_PREFIX = "_bck.";
 
@@ -62,6 +65,7 @@ public class ImpersonationServlet extends AbstractHttpServlet
          resp.sendError(HttpServletResponse.SC_BAD_REQUEST);
       }
    }
+
 
    protected void startImpersonation(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException
    {
@@ -127,10 +131,6 @@ public class ImpersonationServlet extends AbstractHttpServlet
       }
    }
 
-   protected void stopImpersonation(HttpServletRequest req, HttpServletResponse resp)
-   {
-
-   }
 
    /**
     * Check if current user has permission to impersonate as user 'userToImpersonate'
@@ -146,6 +146,7 @@ public class ImpersonationServlet extends AbstractHttpServlet
       // For now hardcode permission here and allow manager:/platform/administrators to impersonate
       return userACL.hasPermission(currentIdentity, "manager:/platform/administrators");
    }
+
 
    /**
     * Backup all session attributes of admin user as we will have new session for "impersonated" user
@@ -178,18 +179,20 @@ public class ImpersonationServlet extends AbstractHttpServlet
       // TODO: save URL to redirect after impersonation will be finished
    }
 
+   /**
+    * Start impersonation session and update ConversationRegistry with new impersonated Identity
+    *
+    * @param req servlet request
+    * @param currentConvState current Conversation State. It will be wrapped inside impersonated identity, so we can later restore it
+    * @param usernameToImpersonate
+    * @return
+    */
    protected boolean impersonate(HttpServletRequest req, ConversationState currentConvState, String usernameToImpersonate)
    {
       // Create new identity for user, who will be impersonated
-      Authenticator authenticator = (Authenticator) getContainer().getComponentInstanceOfType(Authenticator.class);
-      Identity newIdentity = null;
-      try
+      Identity newIdentity = createIdentity(usernameToImpersonate);
+      if (newIdentity == null)
       {
-         newIdentity = authenticator.createIdentity(usernameToImpersonate);
-      }
-      catch (Exception e)
-      {
-         log.error("New identity for user: " + usernameToImpersonate + " not created.\n", e);
          return false;
       }
 
@@ -202,14 +205,123 @@ public class ImpersonationServlet extends AbstractHttpServlet
 
       ConversationState impersonatedConversationState = new ConversationState(impersonatedIdentity);
 
+      registerConversationState(req, impersonatedConversationState);
+      return true;
+   }
+
+
+   /**
+    * Stop impersonation session and restore previous Conversation State
+    *
+    * @param req servlet request
+    * @param resp servlet response
+    */
+   protected void stopImpersonation(HttpServletRequest req, HttpServletResponse resp) throws IOException
+   {
+      Identity currentIdentity = ConversationState.getCurrent().getIdentity();
+      if (!(currentIdentity instanceof ImpersonatedIdentity))
+      {
+         log.error("Can't stop impersonation session. Current identity is not instance of Impersonated Identity! Current identity: " + currentIdentity);
+         resp.sendError(HttpServletResponse.SC_BAD_REQUEST);
+         return;
+      }
+
+      ImpersonatedIdentity impersonatedIdentity = (ImpersonatedIdentity)currentIdentity;
+
+      log.debug("Cancel impersonation session. Impersonated user was: " + impersonatedIdentity.getUserId()
+            + ", Admin user was: " + impersonatedIdentity.getParentConversationState().getIdentity().getUserId());
+
+      // Restore old conversation state
+      restoreConversationState(req, impersonatedIdentity);
+
+      // Restore session attributes of root user
+      restoreOldSessionAttributes(req);
+
+      // TODO: Fix this
+      resp.sendRedirect(req.getContextPath());
+   }
+
+   protected void restoreConversationState(HttpServletRequest req, ImpersonatedIdentity impersonatedIdentity)
+   {
+      ConversationState adminConvState = impersonatedIdentity.getParentConversationState();
+      registerConversationState(req, adminConvState);
+
+      // Possibly restore identity if it's not available anymore in IdentityRegistry. This could happen during parallel logout of admin user from another session
+      IdentityRegistry identityRegistry = (IdentityRegistry)getContainer().getComponentInstanceOfType(IdentityRegistry.class);
+      String adminUsername = adminConvState.getIdentity().getUserId();
+      Identity adminIdentity = identityRegistry.getIdentity(adminUsername);
+      if (adminIdentity == null)
+      {
+         log.debug("Restore of identity of user " + adminUsername + " in IdentityRegistry");
+         adminIdentity = createIdentity(adminUsername);
+         identityRegistry.register(adminIdentity);
+      }
+   }
+
+   protected void restoreOldSessionAttributes(HttpServletRequest req)
+   {
+      HttpSession session = req.getSession(false);
+      if (session != null)
+      {
+         int prefixLength = BACKUP_ATTR_PREFIX.length();
+
+         // Remove all session attributes of current (impersonated) user. Restore attributes of admin user
+         Enumeration attrNames = session.getAttributeNames();
+         while (attrNames.hasMoreElements())
+         {
+            String attrName = (String)attrNames.nextElement();
+
+            // Remove attribute of impersonated user
+            if (!attrName.startsWith(BACKUP_ATTR_PREFIX))
+            {
+               session.removeAttribute(attrName);
+               if (log.isTraceEnabled())
+               {
+                  log.trace("Removed attribute: " + attrName);
+               }
+            }
+            else
+            {
+               // Restore attribute as it's one of the attributes of admin user, which was backup-ed
+               Object attrValue = session.getAttribute(attrName);
+
+               String restoredAttributeName = attrName.substring(prefixLength);
+               session.setAttribute(restoredAttributeName, attrValue);
+               session.removeAttribute(attrName);
+
+               if (log.isTraceEnabled())
+               {
+                  log.trace("Finished restore of attribute: " + attrName);
+               }
+            }
+         }
+      }
+   }
+
+   // Register given conversationState into ConversationRegistry. Key will be current Http session
+   private void registerConversationState(HttpServletRequest req, ConversationState conversationState)
+   {
       // Obtain stateKey of current HttpSession
       HttpSession httpSession = req.getSession();
       StateKey stateKey = new HttpSessionStateKey(httpSession);
 
       // Update conversationRegistry with new ImpersonatedIdentity
       ConversationRegistry conversationRegistry = (ConversationRegistry)getContainer().getComponentInstanceOfType(ConversationRegistry.class);
-      conversationRegistry.register(stateKey, impersonatedConversationState);
+      conversationRegistry.register(stateKey, conversationState);
+   }
 
-      return true;
+   private Identity createIdentity(String username)
+   {
+      // Create new identity for user, who will be impersonated
+      Authenticator authenticator = (Authenticator) getContainer().getComponentInstanceOfType(Authenticator.class);
+      try
+      {
+         return authenticator.createIdentity(username);
+      }
+      catch (Exception e)
+      {
+         log.error("New identity for user: " + username + " not created.", e);
+         return null;
+      }
    }
 }

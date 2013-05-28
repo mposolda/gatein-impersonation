@@ -54,8 +54,6 @@ public class UserImpersonationLoginPortlet extends GenericPortlet
    /** Logger. */
    private static final Logger log = LoggerFactory.getLogger(UserImpersonationLoginPortlet.class);
 
-   private static final String IMPERSONATE_URL_SUFIX = "/impersonate";
-
    private static final String ERROR_MESSAGE = "errorMessage";
    
    /**
@@ -88,7 +86,7 @@ public class UserImpersonationLoginPortlet extends GenericPortlet
       // We just need context like '/portal'
       String uriPrefix = PortalRequest.getInstance().getURIResolver().resolveURI(new SiteId("k"));
       String portalContext = uriPrefix.substring(0, uriPrefix.length() - 2);
-      String redirectURI = portalContext + IMPERSONATE_URL_SUFIX;
+      String redirectURI = portalContext + ImpersonationServlet.IMPERSONATE_URL_SUFIX;
 
       // Attach params
       redirectURI = new StringBuilder(redirectURI)

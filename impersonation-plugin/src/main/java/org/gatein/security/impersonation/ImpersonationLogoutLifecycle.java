@@ -25,6 +25,9 @@ package org.gatein.security.impersonation;
 
 import org.exoplatform.portal.application.PortalLogoutLifecycle;
 import org.exoplatform.portal.application.PortalRequestContext;
+import org.exoplatform.portal.webui.util.Util;
+import org.exoplatform.services.security.ConversationState;
+import org.exoplatform.services.security.Identity;
 import org.exoplatform.web.application.Application;
 import org.exoplatform.web.login.LogoutControl;
 import org.exoplatform.webui.application.WebuiRequestContext;
@@ -48,31 +51,28 @@ public class ImpersonationLogoutLifecycle extends PortalLogoutLifecycle
 
    public void onEndRequest(Application app, WebuiRequestContext context) throws Exception
    {
-      HttpSession currentSession = getSession(context);
-      ImpersonationState impState = (ImpersonationState)currentSession.getAttribute(ImpersonatedStateManager.ATTR_IMPERSONATION_STATE);
-      if (impState == ImpersonationState.IMPERSONATION_STARTED)
+      if (LogoutControl.isLogoutRequired())
       {
-         log.info("Impersonation state changed to state " + ImpersonationState.IMPERSONATION_START_IN_PROGRESS);
-         currentSession.setAttribute(ImpersonatedStateManager.ATTR_IMPERSONATION_STATE, ImpersonationState.IMPERSONATION_START_IN_PROGRESS);
+         Identity currentIdentity = ConversationState.getCurrent().getIdentity();
+
+         if (currentIdentity instanceof ImpersonatedIdentity)
+         {
+            PortalRequestContext prContext = Util.getPortalRequestContext();
+
+            // Saved flag to session. It will be processed by CancelImpersonationFilter in next request
+            prContext.getRequest().getSession().setAttribute(CancelImpersonationFilter.ATTR_CANCEL_IMPERSONATION, true);
+
+            if (log.isTraceEnabled())
+            {
+               log.trace("Triggered cancel of impersonation session. Saved flag " + CancelImpersonationFilter.ATTR_CANCEL_IMPERSONATION);
+            }
+         }
+         else
+         {
+            // If we are not in the middle of impersonation, simply delegate to PortalLogoutLifecycle
+            super.onEndRequest(app, context);
+         }
       }
-      else if (impState == ImpersonationState.IMPERSONATION_START_IN_PROGRESS)
-      {
-         log.info("Impersontion state changed to state " + ImpersonationState.IMPERSONATION_IN_PROGRESS);
-         currentSession.setAttribute(ImpersonatedStateManager.ATTR_IMPERSONATION_STATE, ImpersonationState.IMPERSONATION_IN_PROGRESS);
-      }
-      else if (impState == ImpersonationState.IMPERSONATION_IN_PROGRESS && LogoutControl.isLogoutRequired())
-      {
-         LogoutControl.cancelLogout();  // Cancel Logout will handle ourselves.
-         log.info("Impersonation state changed to state " + ImpersonationState.IMPERSONATION_FINISHED);
-         currentSession.setAttribute(ImpersonatedStateManager.ATTR_IMPERSONATION_STATE, ImpersonationState.IMPERSONATION_FINISHED);
-      }
-     
-      super.onEndRequest(app, context);
    }
 
-   private HttpSession getSession(WebuiRequestContext context)
-   {
-      HttpServletRequest req = ((PortalRequestContext)context).getRequest();
-      return req.getSession(false);
-   }
 }
