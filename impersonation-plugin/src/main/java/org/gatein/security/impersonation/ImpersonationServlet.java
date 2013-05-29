@@ -108,8 +108,6 @@ public class ImpersonationServlet extends AbstractHttpServlet
          return;
       }
 
-      log.debug("Going to impersonate as user: " + usernameToImpersonate);
-
       ConversationState currentConversationState = ConversationState.getCurrent();
       Identity currentIdentity = currentConversationState.getIdentity();
       if (currentIdentity instanceof ImpersonatedIdentity)
@@ -125,6 +123,8 @@ public class ImpersonationServlet extends AbstractHttpServlet
          resp.sendError(HttpServletResponse.SC_FORBIDDEN);
          return;
       }
+
+      log.debug("Going to impersonate as user: " + usernameToImpersonate);
 
       // Backup and clear current HTTP session
       backupAndClearCurrentSession(req);
@@ -208,7 +208,7 @@ public class ImpersonationServlet extends AbstractHttpServlet
     * @param req servlet request
     * @param currentConvState current Conversation State. It will be wrapped inside impersonated identity, so we can later restore it
     * @param usernameToImpersonate
-    * @return
+    * @return true if impersonation was successful
     */
    protected boolean impersonate(HttpServletRequest req, ConversationState currentConvState, String usernameToImpersonate)
    {
@@ -334,14 +334,13 @@ public class ImpersonationServlet extends AbstractHttpServlet
       HttpSession httpSession = req.getSession();
       StateKey stateKey = new HttpSessionStateKey(httpSession);
 
-      // Update conversationRegistry with new ImpersonatedIdentity
+      // Update conversationRegistry
       ConversationRegistry conversationRegistry = (ConversationRegistry)getContainer().getComponentInstanceOfType(ConversationRegistry.class);
       conversationRegistry.register(stateKey, conversationState);
    }
 
    private Identity createIdentity(String username)
    {
-      // Create new identity for user, who will be impersonated
       Authenticator authenticator = (Authenticator) getContainer().getComponentInstanceOfType(Authenticator.class);
       try
       {
