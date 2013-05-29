@@ -1,4 +1,4 @@
-package org.gatein.security.impersonation;
+package org.gatein.web.security.impersonation;
 
 import org.exoplatform.container.web.AbstractHttpServlet;
 import org.exoplatform.portal.config.UserACL;

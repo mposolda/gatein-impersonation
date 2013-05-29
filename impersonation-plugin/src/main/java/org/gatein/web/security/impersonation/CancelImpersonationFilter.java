@@ -1,4 +1,4 @@
-package org.gatein.security.impersonation;
+package org.gatein.web.security.impersonation;
 
 import org.exoplatform.container.web.AbstractFilter;
 import org.exoplatform.services.security.ConversationState;
@@ -18,6 +18,8 @@ import java.io.IOException;
 /**
  * Filter to check if admin user wants to stop impersonation. It's checked by presence of flag in session represented
  * by attribute {@link #ATTR_CANCEL_IMPERSONATION}
+ *
+ * It should be in filter chain after {@link org.exoplatform.services.security.web.SetCurrentIdentityFilter}
  *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
  */

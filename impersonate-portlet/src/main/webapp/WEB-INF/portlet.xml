@@ -30,7 +30,7 @@ version="2.0"
    
    <portlet>
       <portlet-name>UserImpersonationLoginPortlet</portlet-name>
-      <portlet-class>org.gatein.impersonalization.UserImpersonationLoginPortlet</portlet-class>
+      <portlet-class>org.gatein.portlet.impersonation.UserImpersonationLoginPortlet</portlet-class>
       <supports>
          <mime-type>text/html</mime-type>
          <portlet-mode>view</portlet-mode>

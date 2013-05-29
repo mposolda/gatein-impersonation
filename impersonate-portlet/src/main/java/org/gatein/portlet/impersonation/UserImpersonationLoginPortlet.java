@@ -21,7 +21,7 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.gatein.impersonalization;
+package org.gatein.portlet.impersonation;
 
 import java.io.IOException;
 import java.net.URLEncoder;
@@ -39,7 +39,7 @@ import org.gatein.api.navigation.NodePath;
 import org.gatein.api.site.SiteId;
 import org.gatein.common.logging.Logger;
 import org.gatein.common.logging.LoggerFactory;
-import org.gatein.security.impersonation.ImpersonationServlet;
+import org.gatein.web.security.impersonation.ImpersonationServlet;
 
 /**
  * User Impersonation Login Portlet

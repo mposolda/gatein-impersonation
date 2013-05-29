@@ -1,4 +1,4 @@
-package org.gatein.security.impersonation;
+package org.gatein.web.security.impersonation;
 
 import org.exoplatform.container.web.AbstractFilter;
 import org.exoplatform.services.security.ConversationState;
